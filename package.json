@@ -1,0 +1,18 @@
+{
+  "name": "react-native-universal-actionsheet",
+  "version": "0.0.1",
+  "description": "Cross platform ActionSheet. This component implements a custom ActionSheet and provides the same way to drawing it on the defferent platforms(iOS and Android, Web, Windows). It dose not use any native code only javascript.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react-native-universal-actionsheet",
+    "actionsheet"
+  ],
+  "author": "Alen Toma",
+  "license": "MIT",
+  "dependencies": {
+    "react-native": "^0.63.4"
+  }
+}
