@@ -122,7 +122,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#fff",
         bottom: 0,
         zIndex: 101,
-        padding: 10
+        padding: 10,
+        overflow:"hidden"
     }
 })
 
