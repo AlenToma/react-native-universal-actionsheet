@@ -29,10 +29,10 @@ No Additional Installations
 No Additional Installations
 
 ## Properties
-* `position`: "Top" | "Bottom" (Default "Bottom")
+* `position`: "Top" | "Bottom" | "Left" (Default "Bottom")
 * `onClose`: ()=> void, when the user click close.
 * `style`: style the ActionSheet eg `{ backgroundColor:"#fff", opacity:0.8}`
 * `visible`: true | false
-* `height`: the height of ActionSheet (Default 300) 
+* `size`: the height or width of ActionSheet depending on the position(Default 300) 
 * `transitionSpeed`: the slide up or down speed of the StyleSheet (Default 500)
 * `enableCloseIndicator`: true | false (Default false)

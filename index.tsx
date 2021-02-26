@@ -1,3 +1,3 @@
-import ActionSheet from './actionSheet'
+import {ActionSheet, ActionSheetProvider} from './actionSheet'
 
-export { ActionSheet }
+export { ActionSheet, ActionSheetProvider }

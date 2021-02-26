@@ -1,130 +1,218 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
-    StyleSheet,
-    ScrollView,
-    View,
-    Text,
-    TouchableOpacity,
-    Dimensions,
-    Animated
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { ViewStyle, StyleProp } from 'react-native';
+const ActionSheetProviderContext = React.createContext(
+  {} as {
+    show: (item: React.ReactNode, id: string) => void;
+    clear: () => void;
+    component: { id: string; event: (v: boolean) => void }[];
+    registerComponent: (id: string, value: (v: boolean) => void) => void;
+    unregisterComponent: (id: string) => void;
+  }
+);
+export const ActionSheetProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [currentValue, setCurrentValue] = useState(
+    undefined as React.ReactNode | undefined
+  );
+
+  const [appcontextValue] = useState({
+    show: (value: React.ReactNode, id: string) => {
+      appcontextValue.component.forEach((x) => {
+        if (x.id != id) {
+          x.event(false);
+        }
+      });
+      setCurrentValue(
+        <>
+         {value}
+        </>
+      );
+    },
+    clear: () => {
+      setCurrentValue(undefined);
+      appcontextValue.component.forEach((x) => x.event(false));
+    },
+    component: [] as { id: string; event: (v: boolean) => void }[],
+    registerComponent: (id: string, component: (v: boolean) => void) => {
+      appcontextValue.component.push({ id: id, event: component });
+    },
+    unregisterComponent: (id: string) => {
+      appcontextValue.component = appcontextValue.component.slice(
+        appcontextValue.component.findIndex((x) => x.id == id),
+        1
+      );
+    },
+  });
+
+  return (
+    <ActionSheetProviderContext.Provider value={appcontextValue}>
+      {children}
+      <>{currentValue ? currentValue : null}</>
+    </ActionSheetProviderContext.Provider>
+  );
+};
 
 const transitions = 500;
-const ActionSheet = ({ children,
-    transitionSpeed,
-    onClose,
-    height,
-    visible,
-    position,
-    style,
-    enableCloseIndicator
-}:
-    {
-        enableCloseIndicator?: boolean,
-        children?: React.ReactNode,
-        onClose: () => void,
-        height?: number,
-        transitionSpeed?: number,
-        visible: boolean,
-        position?: "Bottom" | "Top",
-        style?: StyleProp<ViewStyle>
-    }) => {
+export const ActionSheet = ({
+  children,
+  transitionSpeed,
+  onClose,
+  size,
+  visible,
+  position,
+  style,
+  enableCloseIndicator,
+}: {
+  enableCloseIndicator?: boolean;
+  children?: React.ReactNode;
+  onClose: () => void;
+  size?: number;
+  transitionSpeed?: number;
+  visible: boolean;
+  position?: 'Bottom' | 'Top' | 'Left';
+  style?: StyleProp<ViewStyle>;
+}) => {
+  const [fadeAnim] = useState(new Animated.Value(1));
+  const [isVisible, setIsvisible] = useState(visible);
+  const [id, setId] = useState(new Date().getUTCMilliseconds().toString());
+  const actionSheetProviderContext = useContext(ActionSheetProviderContext);
 
-    const [fadeAnim] = useState(new Animated.Value(1))
-    const [isVisible, setIsvisible] = useState(visible);
-
-    const show = async () => {
-
-        await setIsvisible(true);
-        Animated.timing(fadeAnim, {
-            toValue: Math.min(Dimensions.get("window").height, height ?? 300),
-            duration: transitionSpeed,
-            useNativeDriver: false
-        }).start();
+  useEffect(() => {
+    var generatedId = id;
+    while (
+      actionSheetProviderContext.component.find((x) => x.id == generatedId)
+    ) {
+      generatedId = generatedId + '1';
     }
+    setId(generatedId);
+    actionSheetProviderContext.registerComponent(generatedId, setIsvisible);
+    //  Dimensions.addEventListener('change', validatePosition);
 
-    const hide = () => {
-        Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: transitionSpeed,
-            useNativeDriver: false
-        }).start();
+    return () => {
+      actionSheetProviderContext.unregisterComponent(id);
+      //Dimensions.removeEventListener('change', validatePosition);
+    };
+  }, []);
 
-        setTimeout(() => {
-            setIsvisible(false);
-        }, (transitionSpeed ?? transitions) + 20)
+  const show = async () => {
+    await setIsvisible(true);
+    if (position !== 'Left') {
+      Animated.timing(fadeAnim, {
+        toValue: Math.min(Dimensions.get('window').height, size ?? 300),
+        duration: transitionSpeed,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: Math.min(Dimensions.get('window').width, size ?? (Dimensions.get('window').width / 2)),
+        duration: transitionSpeed,
+        useNativeDriver: false,
+      }).start();
     }
-    useEffect(() => {
-        if (!transitionSpeed)
-            transitionSpeed = transitions;
-        if (isVisible)
-            show();
-    }, [])
+    actionSheetProviderContext.show(getItem(), id);
+  };
 
-    useEffect(() => {
-        if (visible)
-            show();
-        else hide();
-    }, [visible])
+  const hide = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: transitionSpeed,
+      useNativeDriver: false,
+    }).start();
+    setTimeout(() => {
+      setIsvisible(false);
+      actionSheetProviderContext.clear();
+    }, (transitionSpeed ?? transitions) + 20);
+  };
+  useEffect(() => {
+    if (!transitionSpeed) transitionSpeed = transitions;
+    if (isVisible) show();
+  }, []);
 
-    if (!isVisible)
-        return null;
+  useEffect(() => {
+    if (visible) show();
+    else hide();
+  }, [visible]);
+
+  const getItem = () => {
     return (
-        <View style={styles.container}>
-            <Text style={styles.closer} onPress={onClose} />
-            <Animated.View style={[styles.actionSheet, style, { height: fadeAnim, bottom: !position || position == "Bottom" ? 0 : undefined, top: position === "Top" ? 0 : undefined }]}>
-                {enableCloseIndicator === true ? (
-                    <View
-                        style={{
-                            width: '100%',
-                            alignItems: 'flex-end',
-                            flexDirection: 'row',
-                            justifyContent: 'flex-end',
-                        }}>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={{ color: "red", fontSize: 20 }} >X</Text>
-                        </TouchableOpacity>
-                    </View>) : null}
-                {children ? children : null}
-            </Animated.View>
-        </View>
-    )
-}
+      <View style={styles.container}>
+        <Text style={styles.closer} onPress={onClose} />
+        <Animated.View
+          style={[
+            styles.actionSheet,
+            style,
+            {
+              height: position !== 'Left' ? fadeAnim : style?.height ?? '100%',
+              width: position === 'Left' ? fadeAnim : style?.width ?? '100%',
+              bottom:
+                !position || position == 'Bottom'
+                  ? 0
+                  : style?.bottom ?? undefined,
+              top: position === 'Top' ? 0 : style?.top ?? undefined,
+            },
+          ]}>
+          {enableCloseIndicator === true ? (
+            <View
+              style={{
+                width: '100%',
+                alignItems: 'flex-end',
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+              }}>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={{ color: 'red', fontSize: 20 }}>X</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {children ? children : null}
+        </Animated.View>
+      </View>
+    );
+  };
+
+  return null;
+};
 
 const styles = StyleSheet.create({
-    container: {
-        height: "100%",
-        width: "100%",
-        position: "absolute",
-        top: 0,
-        left: 0,
-        zIndex: 100000
-    },
+  container: {
+    height: '100%',
+    width: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 100000,
+  },
 
-    closer: {
-        zIndex: 100,
-        flex: 1,
-        position: "absolute",
-        top: 0,
-        left: 0,
-        backgroundColor: "#000",
-        height: "100%",
-        width: "100%",
-        opacity: 0.5,
+  closer: {
+    zIndex: 100,
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#000',
+    height: '100%',
+    width: '100%',
+    opacity: 0.5,
+  },
 
-    },
-
-    actionSheet: {
-        width: "100%",
-        maxHeight: "80%",
-        position: "absolute",
-        backgroundColor: "#fff",
-        bottom: 0,
-        zIndex: 101,
-        padding: 10,
-        overflow:"hidden"
-    }
-})
-
-export default ActionSheet;
+  actionSheet: {
+    width: '100%',
+    position: 'absolute',
+    backgroundColor: '#fff',
+    bottom: 0,
+    zIndex: 101,
+    padding: 10,
+    overflow: 'hidden',
+  },
+});
