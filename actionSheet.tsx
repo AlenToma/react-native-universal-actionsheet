@@ -141,6 +141,10 @@ export const ActionSheet = ({
     else hide();
   }, [visible]);
 
+  useEffect(() => {
+    if (visible) show();
+  });
+  
   const getItem = () => {
     return (
       <View style={styles.container}>
