@@ -7,8 +7,14 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import { ViewStyle, StyleProp } from 'react-native';
-var currentActionSheetId = "";
+import {
+  ViewStyle,
+  StyleProp,
+  PanResponder,
+  PanResponderInstance,
+} from 'react-native';
+
+var currentActionSheetId = '';
 const ActionSheetProviderContext = React.createContext(
   {} as {
     show: (item: React.ReactNode, id: string) => void;
@@ -23,23 +29,23 @@ export const ActionSheetProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [currentValue, setCurrentValue] = useState(undefined as React.ReactNode | undefined);
-
+  const [currentValue, setCurrentValue] = useState(
+    undefined as React.ReactNode | undefined
+  );
 
   const [appcontextValue] = useState({
     show: async (value: React.ReactNode, id: string) => {
       currentActionSheetId = id;
-      appcontextValue.clear("");
+      appcontextValue.clear('');
       await setCurrentValue(value);
     },
     clear: (id: string) => {
       if (currentActionSheetId == id) {
         setCurrentValue(undefined);
-        currentActionSheetId = "";
+        currentActionSheetId = '';
       }
       appcontextValue.component.forEach((x) => {
-        if (x.id != currentActionSheetId)
-          x.event(false)
+        if (x.id != currentActionSheetId) x.event(false);
       });
     },
     component: [] as { id: string; event: (v: boolean) => void }[],
@@ -47,9 +53,11 @@ export const ActionSheetProvider = ({
       appcontextValue.component.push({ id: id, event: component });
     },
     unregisterComponent: (id: string) => {
-      appcontextValue.component = appcontextValue.component.filter(x => x.id != id);
+      appcontextValue.component = appcontextValue.component.filter(
+        (x) => x.id != id
+      );
       if (currentActionSheetId === id) {
-        currentActionSheetId = ""
+        currentActionSheetId = '';
         setCurrentValue(undefined);
       }
     },
@@ -63,7 +71,7 @@ export const ActionSheetProvider = ({
   );
 };
 
-const transitions = 500;
+const transitions = 100;
 export const ActionSheet = ({
   children,
   transitionSpeed,
@@ -87,8 +95,71 @@ export const ActionSheet = ({
   const [isVisible, setIsvisible] = useState(visible == true);
   const [id, setId] = useState(new Date().getUTCMilliseconds().toString());
   const actionSheetProviderContext = useContext(ActionSheetProviderContext);
+  const working = React.useRef(false);
+  const timer = React.useRef(undefined as any);
+  const currentValue = React.useRef(0);
+  const panResponder = React.useRef(
+    undefined as PanResponderInstance | undefined
+  );
 
   useEffect(() => {
+    panResponder.current = PanResponder.create({
+      onPanResponderEnd: (e, gesture) => {},
+      onPanResponderRelease: (e, g) => {
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+          var h = Math.min(Dimensions.get('window').height, size ?? 300);
+          var w = Math.min(
+            Dimensions.get('window').width,
+            size ?? Dimensions.get('window').width / 2
+          );
+          var close = false;
+
+          if (
+            currentValue.current <= h &&
+            (!position || position === 'Bottom')
+          ) {
+            close = true;
+          } else if (position === 'Top' && currentValue.current <= h)
+            close = true;
+          else if (position === 'Left' && w / 2 > currentValue.current)
+            close = true;
+          if (close) {
+            onClose();
+            return false;
+          } else return true;
+        }, 10);
+      },
+      onStartShouldSetPanResponder: (e, gesture) => {
+        return true;
+      },
+      onPanResponderMove: (event, gestureState) => {
+        if (working.current) return;
+        if (position == 'Bottom' || !position)
+          fadeAnim.setValue(
+            Dimensions.get('window').height - gestureState.moveY + 20
+          );
+        else if (position === 'Top') {
+          fadeAnim.setValue(gestureState.moveY + 20);
+        } else if (position === 'Left')
+          fadeAnim.setValue(gestureState.moveX + 20);
+      },
+    });
+  }, [position, visible]);
+
+  const dimChanged = ({ window, screen }: any) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (visible) {
+        show();
+      }
+    }, 200);
+  };
+
+  useEffect(() => {
+    const listenerId = fadeAnim.addListener(
+      (v) => (currentValue.current = v.value)
+    );
     var generatedId = id;
     while (
       actionSheetProviderContext.component.find((x) => x.id == generatedId)
@@ -97,30 +168,42 @@ export const ActionSheet = ({
     }
     setId(generatedId);
     actionSheetProviderContext.registerComponent(generatedId, setIsvisible);
+    if (!transitionSpeed) transitionSpeed = transitions;
+    if (isVisible) show();
     return () => {
+      Dimensions.removeEventListener('change', dimChanged);
       actionSheetProviderContext.unregisterComponent(generatedId);
+      fadeAnim.removeListener(listenerId);
     };
   }, []);
 
-  const show = async () => {
-    await setIsvisible(true);
-    if (position !== 'Left') {
-      Animated.timing(fadeAnim, {
-        toValue: Math.min(Dimensions.get('window').height, size ?? 300),
-        duration: transitionSpeed,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      Animated.timing(fadeAnim, {
-        toValue: Math.min(Dimensions.get('window').width, size ?? (Dimensions.get('window').width / 2)),
-        duration: transitionSpeed,
-        useNativeDriver: false,
-      }).start();
+  const show = async (updateOnly?: boolean) => {
+    working.current = true;
+    if (!updateOnly) {
+      await setIsvisible(true);
+      if (position !== 'Left') {
+        Animated.timing(fadeAnim, {
+          toValue: Math.min(Dimensions.get('window').height, size ?? 300),
+          duration: transitionSpeed,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(fadeAnim, {
+          toValue: Math.min(
+            Dimensions.get('window').width,
+            size ?? Dimensions.get('window').width / 2
+          ),
+          duration: transitionSpeed,
+          useNativeDriver: false,
+        }).start();
+      }
     }
     actionSheetProviderContext.show(getItem(), id);
+    working.current = false;
   };
 
   const hide = () => {
+    working.current = true;
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: transitionSpeed,
@@ -129,12 +212,9 @@ export const ActionSheet = ({
     setTimeout(() => {
       setIsvisible(false);
       actionSheetProviderContext.clear(id);
+      working.current = false;
     }, (transitionSpeed ?? transitions) + 20);
   };
-  useEffect(() => {
-    if (!transitionSpeed) transitionSpeed = transitions;
-    if (isVisible) show();
-  }, []);
 
   useEffect(() => {
     if (visible) show();
@@ -142,25 +222,36 @@ export const ActionSheet = ({
   }, [visible]);
 
   useEffect(() => {
-    if (visible) show();
+    Dimensions.removeEventListener('change', dimChanged);
+    Dimensions.addEventListener('change', dimChanged);
+    if (visible) show(true);
   });
-  
+
   const getItem = () => {
     return (
       <View style={styles.container}>
         <Text style={styles.closer} onPress={onClose} />
+
         <Animated.View
+          {...panResponder.current?.panHandlers}
           style={[
             styles.actionSheet,
             style,
             {
-              height: position !== 'Left' ? fadeAnim : style?.height ?? '100%',
-              width: position === 'Left' ? fadeAnim : style?.width ?? '100%',
+              height:
+                position !== 'Left'
+                  ? fadeAnim
+                  : (style as any)?.height ?? '100%',
+              width:
+                position === 'Left'
+                  ? fadeAnim
+                  : (style as any)?.width ?? '100%',
+
               bottom:
                 !position || position == 'Bottom'
                   ? 0
-                  : style?.bottom ?? undefined,
-              top: position === 'Top' ? 0 : style?.top ?? undefined,
+                  : (style as any)?.bottom ?? undefined,
+              top: position === 'Top' ? 0 : (style as any)?.top ?? undefined,
             },
           ]}>
           {enableCloseIndicator === true ? (
@@ -176,7 +267,24 @@ export const ActionSheet = ({
               </TouchableOpacity>
             </View>
           ) : null}
-          {children ? children : null}
+          <View
+            style={{
+              alignItems: 'center',
+              maxHeight: '90%',
+              maxWidth: '100%',
+            }}>
+            {!position || position === 'Bottom' ? (
+              <View style={styles.handler} />
+            ) : null}
+            <View
+              style={{
+                width: '100%',
+                height: '100%',
+              }}>
+              {children ? children : null}
+            </View>
+            {position === 'Top' ? <View style={styles.handler} /> : null}
+          </View>
         </Animated.View>
       </View>
     );
@@ -193,6 +301,17 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 100000,
+  },
+
+  handler: {
+    width: 38,
+    height: 10,
+    padding: 10,
+    backgroundColor: 'gray',
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 5,
+    marginBottom: 5,
   },
 
   closer: {
@@ -215,5 +334,6 @@ const styles = StyleSheet.create({
     zIndex: 101,
     padding: 10,
     overflow: 'hidden',
+    paddingTop: 5,
   },
 });
