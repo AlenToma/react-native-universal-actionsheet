@@ -28,9 +28,41 @@ No Additional Installations
 ### Web
 No Additional Installations
 
+## Usage
+
+```js
+import { ActionSheet, ActionSheetProvider } from 'react-native-universal-actionsheet';
+
+const testComponent =()=> {
+        const [visible, setVisible] = useState(false)
+
+    return (
+        <>
+            <TouchableOpacity onPress={()=> setVisible(true)}>
+                <Text>Show ActionSheet</Text>
+            </TouchableOpacity>
+            <ActionSheet position="Bottom" size={250} visible={visible} onClose={()=> setVisible(false)}>
+             // add your components here
+            </ActionSheet>
+        </>
+    )
+}
+
+const App=()=> {
+
+    return (<ActionSheetProvider>
+            <testComponent />
+          </ActionSheetProvider>)
+}
+
+
+
+
+```
+
 ## Properties
 * `position`: "Top" | "Bottom" | "Left" (Default "Bottom")
-* `onClose`: ()=> void, when the user click close.
+* `onClose`: ()=> void, when the actiosheet trigger close event.
 * `style`: style the ActionSheet eg `{ backgroundColor:"#fff", opacity:0.8}`
 * `visible`: true | false
 * `size`: the height or width of ActionSheet depending on the position(Default 300) 

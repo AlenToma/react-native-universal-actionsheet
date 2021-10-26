@@ -81,6 +81,7 @@ export const ActionSheet = ({
   position,
   style,
   enableCloseIndicator,
+  handlerStyle
 }: {
   enableCloseIndicator?: boolean;
   children?: React.ReactNode;
@@ -90,6 +91,7 @@ export const ActionSheet = ({
   visible: boolean;
   position?: 'Bottom' | 'Top' | 'Left';
   style?: StyleProp<ViewStyle>;
+  handlerStyle?: StyleProp<ViewStyle>;
 }) => {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isVisible, setIsvisible] = useState(visible == true);
@@ -274,7 +276,7 @@ export const ActionSheet = ({
               maxWidth: '100%',
             }}>
             {!position || position === 'Bottom' ? (
-              <View style={styles.handler} />
+              <View style={[styles.handler, handlerStyle]} />
             ) : null}
             <View
               style={{
@@ -283,7 +285,7 @@ export const ActionSheet = ({
               }}>
               {children ? children : null}
             </View>
-            {position === 'Top' ? <View style={styles.handler} /> : null}
+            {position === 'Top' ? <View style={[styles.handler, handlerStyle]} /> : null}
           </View>
         </Animated.View>
       </View>
