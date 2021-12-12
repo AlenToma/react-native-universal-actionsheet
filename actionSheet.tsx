@@ -210,12 +210,11 @@ export const ActionSheet = ({
       toValue: 0,
       duration: transitionSpeed,
       useNativeDriver: false,
-    }).start();
-    setTimeout(() => {
+    }).start(()=> {
       setIsvisible(false);
       actionSheetProviderContext.clear(id);
       working.current = false;
-    }, (transitionSpeed ?? transitions) + 20);
+    });
   };
 
   useEffect(() => {
