@@ -111,26 +111,24 @@ export const ActionSheet = ({
   );
 
   useEffect(() => {
+    var dx = 0;
+    var dy = 0;
     panResponder.current = PanResponder.create({
       onPanResponderEnd: (e, gesture) => { },
       onPanResponderRelease: (e, g) => {
+        dx = dy = 0;
         clearTimeout(timer.current);
         timer.current = setTimeout(() => {
-          var h = Math.min(Dimensions.get('window').height, size ?? 300);
-          var w = Math.min(
-            Dimensions.get('window').width,
-            size ?? Dimensions.get('window').width / 2
-          );
+          const sh = size ?? 300;
+          var h = Math.min(Dimensions.get('window').height, sh) * 0.95;
+          var w = Math.min(Dimensions.get('window').width, size ?? (Dimensions.get('window').width / 2));
           var close = false;
 
-          if (
-            currentValue.current <= h &&
-            (!position || position === 'Bottom')
-          ) {
+          if (currentValue.current <= h && (!position || position === 'Bottom')) {
             close = true;
           } else if (position === 'Top' && currentValue.current <= h)
             close = true;
-          else if (position === 'Left' && w / 2 > currentValue.current)
+          else if (position === 'Left' && w * 0.90 > currentValue.current)
             close = true;
           if (close) {
             onClose();
@@ -138,19 +136,23 @@ export const ActionSheet = ({
           } else return true;
         }, 10);
       },
-      onStartShouldSetPanResponder: (e, gesture) => {
+      onPanResponderGrant: (evt, g) => {
+        dx = Math.abs(g.dx - evt.nativeEvent.pageX);
+        dy = Math.abs(g.dy - evt.nativeEvent.pageY);
+        console.log(dy);
+      },
+      onStartShouldSetPanResponder: (evt, gesture) => {
         return true;
       },
       onPanResponderMove: (event, gestureState) => {
         if (working.current) return;
+
         if (position == 'Bottom' || !position)
-          fadeAnim.setValue(
-            Dimensions.get('window').height - gestureState.moveY + 20
-          );
+          fadeAnim.setValue((Dimensions.get('window').height - gestureState.dy) - dy);
         else if (position === 'Top') {
-          fadeAnim.setValue(gestureState.moveY + 20);
+          fadeAnim.setValue(gestureState.dy + dy);
         } else if (position === 'Left')
-          fadeAnim.setValue(gestureState.moveX + 20);
+          fadeAnim.setValue(gestureState.dx + dx);
       },
     });
   }, [position, visible]);
