@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,9 @@ import {
   PanResponderInstance,
 } from 'react-native';
 
-var currentActionSheetId = '';
+import { v4 as uuidv4 } from 'uuid';
+
+
 const ActionSheetProviderContext = React.createContext(
   {} as {
     show: (item: React.ReactNode, id: string) => void;
@@ -32,32 +34,36 @@ export const ActionSheetProvider = ({
   const [currentValue, setCurrentValue] = useState(
     undefined as React.ReactNode | undefined
   );
+  const currentActionSheetId = useRef("");
 
   const [appcontextValue] = useState({
     show: async (value: React.ReactNode, id: string) => {
-      currentActionSheetId = id;
+      if (id == "")
+        return;
+      currentActionSheetId.current = id;
       appcontextValue.clear('');
       await setCurrentValue(value);
     },
     clear: (id: string) => {
-      if (currentActionSheetId == id) {
+      if (currentActionSheetId.current == id) {
         setCurrentValue(undefined);
-        currentActionSheetId = '';
+        currentActionSheetId.current = '';
       }
       appcontextValue.component.forEach((x) => {
-        if (x.id != currentActionSheetId) x.event(false);
+        if (x.id != currentActionSheetId.current) x.event(false);
       });
     },
     component: [] as { id: string; event: (v: boolean) => void }[],
     registerComponent: (id: string, component: (v: boolean) => void) => {
-      appcontextValue.component.push({ id: id, event: component });
+      if (appcontextValue.component.find(x => x.id == id) === undefined)
+        appcontextValue.component.push({ id: id, event: component });
+      else appcontextValue.component.find(x => x.id == id).event = component
     },
     unregisterComponent: (id: string) => {
-      appcontextValue.component = appcontextValue.component.filter(
-        (x) => x.id != id
-      );
-      if (currentActionSheetId === id) {
-        currentActionSheetId = '';
+      appcontextValue.component = appcontextValue.component.filter((x) => x.id != id);
+      if (currentActionSheetId.current == id) {
+        console.log("Clearing ActionSheet", id)
+        currentActionSheetId.current = '';
         setCurrentValue(undefined);
       }
     },
@@ -66,7 +72,7 @@ export const ActionSheetProvider = ({
   return (
     <ActionSheetProviderContext.Provider value={appcontextValue}>
       {children}
-      <>{currentValue ? currentValue : null}</>
+      {currentValue ? currentValue : null}
     </ActionSheetProviderContext.Provider>
   );
 };
@@ -95,7 +101,7 @@ export const ActionSheet = ({
 }) => {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isVisible, setIsvisible] = useState(visible == true);
-  const [id, setId] = useState(new Date().getUTCMilliseconds().toString());
+  const id = useRef(uuidv4())
   const actionSheetProviderContext = useContext(ActionSheetProviderContext);
   const working = React.useRef(false);
   const timer = React.useRef(undefined as any);
@@ -106,7 +112,7 @@ export const ActionSheet = ({
 
   useEffect(() => {
     panResponder.current = PanResponder.create({
-      onPanResponderEnd: (e, gesture) => {},
+      onPanResponderEnd: (e, gesture) => { },
       onPanResponderRelease: (e, g) => {
         clearTimeout(timer.current);
         timer.current = setTimeout(() => {
@@ -162,20 +168,17 @@ export const ActionSheet = ({
     const listenerId = fadeAnim.addListener(
       (v) => (currentValue.current = v.value)
     );
-    var generatedId = id;
-    while (
-      actionSheetProviderContext.component.find((x) => x.id == generatedId)
-    ) {
-      generatedId = generatedId + '1';
-    }
-    setId(generatedId);
-    actionSheetProviderContext.registerComponent(generatedId, setIsvisible);
+
+    actionSheetProviderContext.registerComponent(id.current, setIsvisible);
     if (!transitionSpeed) transitionSpeed = transitions;
     if (isVisible) show();
     return () => {
+      var uId = id.current;
+      id.current = "";
       Dimensions.removeEventListener('change', dimChanged);
-      actionSheetProviderContext.unregisterComponent(generatedId);
+      actionSheetProviderContext.unregisterComponent(uId);
       fadeAnim.removeListener(listenerId);
+
     };
   }, []);
 
@@ -200,7 +203,7 @@ export const ActionSheet = ({
         }).start();
       }
     }
-    actionSheetProviderContext.show(getItem(), id);
+    actionSheetProviderContext.show(getItem(), id.current);
     working.current = false;
   };
 
@@ -210,9 +213,9 @@ export const ActionSheet = ({
       toValue: 0,
       duration: transitionSpeed,
       useNativeDriver: false,
-    }).start(()=> {
+    }).start(() => {
       setIsvisible(false);
-      actionSheetProviderContext.clear(id);
+      actionSheetProviderContext.clear(id.current);
       working.current = false;
     });
   };
@@ -225,7 +228,7 @@ export const ActionSheet = ({
   useEffect(() => {
     Dimensions.removeEventListener('change', dimChanged);
     Dimensions.addEventListener('change', dimChanged);
-    if (visible) show(true);
+    if (visible && actionSheetProviderContext.component.find(x => x.id === id.current) && id.current != "") show(true);
   });
 
   const getItem = () => {
