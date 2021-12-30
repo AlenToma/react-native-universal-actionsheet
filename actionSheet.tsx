@@ -271,7 +271,7 @@ export const ActionSheet = ({
           <View
             style={{
               alignItems: 'center',
-              maxHeight: '90%',
+              maxHeight: position != "Left" ? "90%" : '100%',
               maxWidth: '100%',
             }}>
             {!position || position === 'Bottom' ? (
