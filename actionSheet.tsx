@@ -16,7 +16,6 @@ import {
 
 import { v4 as uuidv4 } from 'uuid';
 
-
 const ActionSheetProviderContext = React.createContext(
   {} as {
     show: (item: React.ReactNode, id: string) => void;
@@ -34,12 +33,11 @@ export const ActionSheetProvider = ({
   const [currentValue, setCurrentValue] = useState(
     undefined as React.ReactNode | undefined
   );
-  const currentActionSheetId = useRef("");
+  const currentActionSheetId = useRef('');
 
   const [appcontextValue] = useState({
     show: async (value: React.ReactNode, id: string) => {
-      if (id == "")
-        return;
+      if (id == '') return;
       currentActionSheetId.current = id;
       appcontextValue.clear('');
       await setCurrentValue(value);
@@ -55,14 +53,16 @@ export const ActionSheetProvider = ({
     },
     component: [] as { id: string; event: (v: boolean) => void }[],
     registerComponent: (id: string, component: (v: boolean) => void) => {
-      if (appcontextValue.component.find(x => x.id == id) === undefined)
+      if (appcontextValue.component.find((x) => x.id == id) === undefined)
         appcontextValue.component.push({ id: id, event: component });
-      else appcontextValue.component.find(x => x.id == id).event = component
+      else appcontextValue.component.find((x) => x.id == id).event = component;
     },
     unregisterComponent: (id: string) => {
-      appcontextValue.component = appcontextValue.component.filter((x) => x.id != id);
+      appcontextValue.component = appcontextValue.component.filter(
+        (x) => x.id != id
+      );
       if (currentActionSheetId.current == id) {
-        console.log("Clearing ActionSheet", id)
+        console.log('Clearing ActionSheet', id);
         currentActionSheetId.current = '';
         setCurrentValue(undefined);
       }
@@ -87,7 +87,7 @@ export const ActionSheet = ({
   position,
   style,
   enableCloseIndicator,
-  handlerStyle
+  handlerStyle,
 }: {
   enableCloseIndicator?: boolean;
   children?: React.ReactNode;
@@ -102,6 +102,7 @@ export const ActionSheet = ({
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isVisible, setIsvisible] = useState(visible == true);
   const id = useRef(uuidv4())
+  const disabled = useRef(false);
   const actionSheetProviderContext = useContext(ActionSheetProviderContext);
   const working = React.useRef(false);
   const timer = React.useRef(undefined as any);
@@ -114,21 +115,27 @@ export const ActionSheet = ({
     var dx = 0;
     var dy = 0;
     panResponder.current = PanResponder.create({
-      onPanResponderEnd: (e, gesture) => { },
+      onPanResponderEnd: (e, gesture) => {},
       onPanResponderRelease: (e, g) => {
         dx = dy = 0;
         clearTimeout(timer.current);
         timer.current = setTimeout(() => {
           const sh = size ?? 300;
           var h = Math.min(Dimensions.get('window').height, sh) * 0.95;
-          var w = Math.min(Dimensions.get('window').width, size ?? (Dimensions.get('window').width / 2));
+          var w = Math.min(
+            Dimensions.get('window').width,
+            size ?? Dimensions.get('window').width / 2
+          );
           var close = false;
 
-          if (currentValue.current <= h && (!position || position === 'Bottom')) {
+          if (
+            currentValue.current <= h &&
+            (!position || position === 'Bottom')
+          ) {
             close = true;
           } else if (position === 'Top' && currentValue.current <= h)
             close = true;
-          else if (position === 'Left' && w * 0.90 > currentValue.current)
+          else if (position === 'Left' && w * 0.9 > currentValue.current)
             close = true;
           if (close) {
             onClose();
@@ -145,14 +152,38 @@ export const ActionSheet = ({
         return true;
       },
       onPanResponderMove: (event, gestureState) => {
-        if (working.current) return;
+        if (working.current || disabled.current) return;
 
-        if (position == 'Bottom' || !position)
-          fadeAnim.setValue((Dimensions.get('window').height - gestureState.dy) - dy);
-        else if (position === 'Top') {
+        if (position == 'Bottom' || !position) {
+          if (
+            Dimensions.get('window').height - gestureState.dy - dy >
+            (size ?? Dimensions.get('window').height / 2)
+          ) {
+            fadeAnim.setValue(size ?? Dimensions.get('window').height / 2);
+            return;
+          }
+          fadeAnim.setValue(
+            Dimensions.get('window').height - gestureState.dy - dy
+          );
+        } else if (position === 'Top') {
+          if (
+            gestureState.dy + dy >
+            (size ?? Dimensions.get('window').height / 2)
+          ) {
+            fadeAnim.setValue(size ?? Dimensions.get('window').height / 2);
+            return;
+          }
           fadeAnim.setValue(gestureState.dy + dy);
-        } else if (position === 'Left')
+        } else if (position === 'Left') {
+          if (
+            gestureState.dx + dx >
+            (size ?? Dimensions.get('window').width / 2)
+          ) {
+            fadeAnim.setValue(size ?? Dimensions.get('window').width / 2);
+            return;
+          }
           fadeAnim.setValue(gestureState.dx + dx);
+        }
       },
     });
   }, [position, visible]);
@@ -176,11 +207,10 @@ export const ActionSheet = ({
     if (isVisible) show();
     return () => {
       var uId = id.current;
-      id.current = "";
+      id.current = '';
       Dimensions.removeEventListener('change', dimChanged);
       actionSheetProviderContext.unregisterComponent(uId);
       fadeAnim.removeListener(listenerId);
-
     };
   }, []);
 
@@ -230,7 +260,12 @@ export const ActionSheet = ({
   useEffect(() => {
     Dimensions.removeEventListener('change', dimChanged);
     Dimensions.addEventListener('change', dimChanged);
-    if (visible && actionSheetProviderContext.component.find(x => x.id === id.current) && id.current != "") show(true);
+    if (
+      visible &&
+      actionSheetProviderContext.component.find((x) => x.id === id.current) &&
+      id.current != ''
+    )
+      show(true);
   });
 
   const getItem = () => {
@@ -244,6 +279,7 @@ export const ActionSheet = ({
             styles.actionSheet,
             style,
             {
+              alignItems: position == 'Left' ? 'flex-start' : 'center',
               height:
                 position !== 'Left'
                   ? fadeAnim
@@ -276,21 +312,56 @@ export const ActionSheet = ({
           <View
             style={{
               alignItems: 'center',
-              maxHeight: position != "Left" ? "90%" : '100%',
+              maxHeight: position != 'Left' ? '90%' : '100%',
               maxWidth: '100%',
             }}>
             {!position || position === 'Bottom' ? (
-              <View style={[styles.handler, handlerStyle]} />
+              <View
+                onTouchStart={() => (disabled.current = false)}
+                style={[styles.handler, handlerStyle]}
+              />
             ) : null}
             <View
+              onTouchStart={() => (disabled.current = true)}
+              onTouchEnd={() => (disabled.current = false)}
               style={{
                 width: '100%',
                 height: '100%',
+                minWidth:
+                  position !== 'Left'
+                    ? Dimensions.get('window').width
+                    : (size ?? Dimensions.get('window').width / 2) - 40,
+                minHeight: position !== 'Left' ? '92%' : '100%',
               }}>
               {children ? children : null}
             </View>
-            {position === 'Top' ? <View style={[styles.handler, handlerStyle]} /> : null}
           </View>
+          {position === 'Top' ? (
+            <View
+              onTouchStart={() => (disabled.current = false)}
+              style={[
+                styles.handler,
+                handlerStyle,
+                { position: 'absolute', bottom: 0 },
+              ]}
+            />
+          ) : null}
+
+          {position === 'Left' ? (
+            <View
+              onTouchStart={() => (disabled.current = false)}
+              style={[
+                styles.handler,
+                handlerStyle,
+                {
+                  position: 'absolute',
+                  right: 0,
+                  top: Dimensions.get('window').height / 2,
+                  transform: [{ rotate: '90deg' }],
+                },
+              ]}
+            />
+          ) : null}
         </Animated.View>
       </View>
     );
@@ -312,7 +383,7 @@ const styles = StyleSheet.create({
   handler: {
     width: 38,
     height: 10,
-    padding: 10,
+    padding: 0,
     backgroundColor: 'gray',
     borderRadius: 5,
     alignItems: 'center',
@@ -338,8 +409,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     bottom: 0,
     zIndex: 101,
-    padding: 10,
+    padding: 0,
     overflow: 'hidden',
-    paddingTop: 5,
+    paddingTop: 0,
+    alignItems: 'center',
   },
 });
