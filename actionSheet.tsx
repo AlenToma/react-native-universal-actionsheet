@@ -115,7 +115,7 @@ export const ActionSheet = ({
     var dx = 0;
     var dy = 0;
     panResponder.current = PanResponder.create({
-      onPanResponderEnd: (e, gesture) => {},
+      onPanResponderEnd: (e, gesture) => { },
       onPanResponderRelease: (e, g) => {
         dx = dy = 0;
         clearTimeout(timer.current);
@@ -333,7 +333,9 @@ export const ActionSheet = ({
                     : (size ?? Dimensions.get('window').width / 2) - 40,
                 minHeight: position !== 'Left' ? '92%' : '100%',
               }}>
-              {children ? children : null}
+              <View>
+                {children ? children : null}
+              </View>
             </View>
           </View>
           {position === 'Top' ? (
