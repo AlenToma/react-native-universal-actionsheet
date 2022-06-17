@@ -106,6 +106,7 @@ export const ActionSheet = ({
   const actionSheetProviderContext = useContext(ActionSheetProviderContext);
   const working = React.useRef(false);
   const timer = React.useRef(undefined as any);
+  const dSubs = useRef<any>();
   const currentValue = React.useRef(0);
   const panResponder = React.useRef(
     undefined as PanResponderInstance | undefined
@@ -208,7 +209,7 @@ export const ActionSheet = ({
     return () => {
       var uId = id.current;
       id.current = '';
-      Dimensions.removeEventListener('change', dimChanged);
+      dSubs.current?.remove();
       actionSheetProviderContext.unregisterComponent(uId);
       fadeAnim.removeListener(listenerId);
     };
@@ -258,8 +259,8 @@ export const ActionSheet = ({
   }, [visible]);
 
   useEffect(() => {
-    Dimensions.removeEventListener('change', dimChanged);
-    Dimensions.addEventListener('change', dimChanged);
+    dSubs.current?.remove();
+    dSubs.current = Dimensions.addEventListener('change', dimChanged);
     if (
       visible &&
       actionSheetProviderContext.component.find((x) => x.id === id.current) &&
