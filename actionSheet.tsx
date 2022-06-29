@@ -187,7 +187,7 @@ export const ActionSheet = ({
         }
       },
     });
-  }, [position, visible]);
+  }, [position, visible, size]);
 
   const dimChanged = ({ window, screen }: any) => {
     clearTimeout(timer.current);
@@ -254,9 +254,12 @@ export const ActionSheet = ({
   };
 
   useEffect(() => {
-    if (visible) show();
+    if (visible) {
+      show();
+    }
     else hide();
   }, [visible, size]);
+
 
   useEffect(() => {
     dSubs.current?.remove();
