@@ -256,7 +256,7 @@ export const ActionSheet = ({
   useEffect(() => {
     if (visible) show();
     else hide();
-  }, [visible]);
+  }, [visible, size]);
 
   useEffect(() => {
     dSubs.current?.remove();
