@@ -88,6 +88,7 @@ export const ActionSheet = ({
   style,
   enableCloseIndicator,
   handlerStyle,
+  header
 }: {
   enableCloseIndicator?: boolean;
   children?: React.ReactNode;
@@ -98,6 +99,7 @@ export const ActionSheet = ({
   position?: 'Bottom' | 'Top' | 'Left';
   style?: StyleProp<ViewStyle>;
   handlerStyle?: StyleProp<ViewStyle>;
+  header?: React.ReactNode
 }) => {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isVisible, setIsvisible] = useState(visible == true);
@@ -320,10 +322,15 @@ export const ActionSheet = ({
               maxWidth: '100%',
             }}>
             {!position || position === 'Bottom' ? (
-              <View
-                onTouchStart={() => (disabled.current = false)}
-                style={[styles.handler, handlerStyle]}
-              />
+              <>
+                <View
+                  onTouchStart={() => (disabled.current = false)}
+                  style={[styles.handler, handlerStyle]}
+                />
+                {
+                header ?(<View onTouchStart={() => (disabled.current = false)}>{header}</View>): null
+                } 
+              </>
             ) : null}
             <View
               onTouchStart={() => (disabled.current = true)}
