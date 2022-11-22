@@ -53,9 +53,10 @@ export const ActionSheetProvider = ({
     },
     component: [] as { id: string; event: (v: boolean) => void }[],
     registerComponent: (id: string, component: (v: boolean) => void) => {
-      if (appcontextValue.component.find((x) => x.id == id) === undefined)
+      const cm = appcontextValue.component.find((x) => x.id == id);
+      if (cm === undefined)
         appcontextValue.component.push({ id: id, event: component });
-      else appcontextValue.component.find((x) => x.id == id).event = component;
+      else cm.event = component;
     },
     unregisterComponent: (id: string) => {
       appcontextValue.component = appcontextValue.component.filter(
@@ -328,8 +329,8 @@ export const ActionSheet = ({
                   style={[styles.handler, handlerStyle]}
                 />
                 {
-                header ?(<View onTouchStart={() => (disabled.current = false)}>{header}</View>): null
-                } 
+                  header ? (<View onTouchStart={() => (disabled.current = false)}>{header}</View>) : null
+                }
               </>
             ) : null}
             <View
